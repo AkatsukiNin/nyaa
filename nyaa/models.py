@@ -1,3 +1,4 @@
+import flask
 from enum import Enum, IntEnum
 from datetime import datetime, timezone
 from nyaa import app, db
@@ -11,7 +12,8 @@ from ipaddress import ip_address
 import re
 import base64
 from markupsafe import escape as escape_markup
-from urllib.parse import unquote as unquote_url
+from urllib.parse import urlencode, unquote as unquote_url
+from hashlib import md5
 
 if app.config['USE_MYSQL']:
     from sqlalchemy.dialects import mysql
@@ -99,6 +101,8 @@ class Torrent(db.Model):
                             cascade="all, delete-orphan", back_populates='torrent', lazy='joined')
     trackers = db.relationship('TorrentTrackers', uselist=True,
                                cascade="all, delete-orphan", lazy='joined')
+    comments = db.relationship('Comment', uselist=True,
+                               cascade="all, delete-orphan")
 
     def __repr__(self):
         return '<{0} #{1.id} \'{1.display_name}\' {1.filesize}b>'.format(type(self).__name__, self)
@@ -321,6 +325,7 @@ class Comment(db.Model):
     __tablename__ = DB_TABLE_PREFIX + 'comments'
 
     id = db.Column(db.Integer, primary_key=True)
+<<<<<<< HEAD
     torrent = db.Column(db.Integer, db.ForeignKey(
         DB_TABLE_PREFIX + 'torrents.id'), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey(
@@ -329,6 +334,15 @@ class Comment(db.Model):
     text = db.Column(db.String(length=255), nullable=False)
 
     user = db.relationship('User', uselist=False, back_populates='comments')
+=======
+    torrent_id = db.Column(db.Integer, db.ForeignKey(
+        DB_TABLE_PREFIX + 'torrents.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
+    created_time = db.Column(db.DateTime(timezone=False), default=datetime.utcnow)
+    text = db.Column(db.String(length=255, collation=COL_UTF8MB4_BIN), nullable=False)
+
+    user = db.relationship('User', uselist=False, back_populates='comments', lazy="joined")
+>>>>>>> 8ef6e915daab83c6d3590035dda3a5562cea1b0a
 
     def __repr__(self):
         return '<Comment %r>' % self.id
@@ -394,6 +408,7 @@ class User(db.Model):
 
     def gravatar_url(self):
         # from http://en.gravatar.com/site/implement/images/python/
+<<<<<<< HEAD
         size = 40
         # construct the url
         gravatar_url = 'https://www.gravatar.com/avatar/' + \
@@ -401,6 +416,25 @@ class User(db.Model):
         gravatar_url += urllib.parse.urlencode({'d': config.DEFAULT_AVATAR_URL, 's': str(size)})
         return gravatar_url
 
+=======
+        size = 120
+        # construct the url
+        default_avatar = flask.url_for('static', filename='img/avatar/default.png', _external=True)
+        gravatar_url = 'https://www.gravatar.com/avatar/{}?{}'.format(
+            md5(self.email.encode('utf-8').lower()).hexdigest(),
+            urlencode({'d': default_avatar, 's': str(size)}))
+        return gravatar_url
+
+    @property
+    def userlevel_str(self):
+        if self.level == UserLevelType.REGULAR:
+            return 'User'
+        elif self.level == UserLevelType.TRUSTED:
+            return 'Trusted'
+        elif self.level >= UserLevelType.MODERATOR:
+            return 'Moderator'
+
+>>>>>>> 8ef6e915daab83c6d3590035dda3a5562cea1b0a
     @property
     def ip_string(self):
         if self.last_login_ip:
